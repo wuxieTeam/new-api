@@ -773,6 +773,20 @@ function Guide() {
         </section>
       </div>
 
+      {/* ========== Support ========== */}
+      <div className='gp-container'>
+        <section className='gp-section'>
+          <div className='gp-section-header gp-animate-in'>
+            <h2 className='gp-section-title'>售后支持</h2>
+            <p className='gp-section-desc'>遇到问题？扫码加入售后群，获取及时帮助</p>
+          </div>
+          <div className='gp-support-card gp-animate-in'>
+            <img src='/qrcode-support.jpg' alt='售后群二维码' className='gp-qrcode' />
+            <p className='gp-support-hint'>微信扫码加入售后群</p>
+          </div>
+        </section>
+      </div>
+
       {/* ========== CTA ========== */}
       <section className='gp-cta'>
         <div className='gp-cta-blur' />
