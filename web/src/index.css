@@ -368,6 +368,24 @@ code {
   color: var(--semi-color-primary);
 }
 
+.sbg-content-col {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  gap: 2px;
+}
+
+.sbg-description {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--semi-color-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.75;
+}
+
 /* ---- SelectableButtonGroup color variants ---- */
 .sbg-variant-violet {
   --semi-color-primary: #6d28d9;

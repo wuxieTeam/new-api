@@ -65,6 +65,7 @@ const PricingGroups = ({
       value: g,
       label: g === 'all' ? t('全部分组') : g,
       tagCount: ratioDisplay,
+      description: g !== 'all' && usableGroup[g]?.desc ? usableGroup[g].desc : undefined,
     };
   });
 

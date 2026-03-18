@@ -202,13 +202,18 @@ const SelectableButtonGroup = ({
                 }
                 style={{ width: '100%', cursor: 'default' }}
               >
-                <div className='sbg-content'>
-                  {item.icon && <span className='sbg-icon'>{item.icon}</span>}
-                  <ConditionalTooltipText text={item.label} />
-                  {item.tagCount !== undefined && shouldShowTags && (
-                    <span className={`sbg-badge ${isActive ? 'sbg-badge-active' : ''}`}>
-                      {item.tagCount}
-                    </span>
+                <div className={item.description ? 'sbg-content-col' : 'sbg-content'}>
+                  <div className='sbg-content'>
+                    {item.icon && <span className='sbg-icon'>{item.icon}</span>}
+                    <ConditionalTooltipText text={item.label} />
+                    {item.tagCount !== undefined && shouldShowTags && (
+                      <span className={`sbg-badge ${isActive ? 'sbg-badge-active' : ''}`}>
+                        {item.tagCount}
+                      </span>
+                    )}
+                  </div>
+                  {item.description && (
+                    <span className='sbg-description'>{item.description}</span>
                   )}
                 </div>
               </Button>
@@ -225,13 +230,18 @@ const SelectableButtonGroup = ({
               className='sbg-button'
               style={{ width: '100%' }}
             >
-              <div className='sbg-content'>
-                {item.icon && <span className='sbg-icon'>{item.icon}</span>}
-                <ConditionalTooltipText text={item.label} />
-                {item.tagCount !== undefined && shouldShowTags && item.tagCount !== '' && (
-                  <span className={`sbg-badge ${isActive ? 'sbg-badge-active' : ''}`}>
-                    {item.tagCount}
-                  </span>
+              <div className={item.description ? 'sbg-content-col' : 'sbg-content'}>
+                <div className='sbg-content'>
+                  {item.icon && <span className='sbg-icon'>{item.icon}</span>}
+                  <ConditionalTooltipText text={item.label} />
+                  {item.tagCount !== undefined && shouldShowTags && item.tagCount !== '' && (
+                    <span className={`sbg-badge ${isActive ? 'sbg-badge-active' : ''}`}>
+                      {item.tagCount}
+                    </span>
+                  )}
+                </div>
+                {item.description && (
+                  <span className='sbg-description'>{item.description}</span>
                 )}
               </div>
             </Button>
