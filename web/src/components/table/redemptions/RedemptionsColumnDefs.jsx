@@ -18,9 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Tag, Button, Space, Popover, Dropdown } from '@douyinfe/semi-ui';
+import { Tag, Button, Space, Popover, Dropdown, Modal } from '@douyinfe/semi-ui';
 import { IconMore } from '@douyinfe/semi-icons';
 import { renderQuota, timestamp2string } from '../../../helpers';
+import { API, showError, showSuccess } from '../../../helpers';
 import {
   REDEMPTION_STATUS,
   REDEMPTION_STATUS_MAP,
@@ -155,6 +156,57 @@ export const getRedemptionsColumns = ({
             },
           },
         ];
+
+        // Refund option: only for used redemptions
+        if (record.status === REDEMPTION_STATUS.USED) {
+          moreMenuItems.push({
+            node: 'item',
+            name: t('退款'),
+            type: 'warning',
+            onClick: async () => {
+              try {
+                const previewRes = await API.get(
+                  `/api/redemption/refund/preview/${encodeURIComponent(record.key)}`,
+                );
+                const { success, message, data } = previewRes.data;
+                if (!success) {
+                  showError(message);
+                  return;
+                }
+                Modal.confirm({
+                  title: t('退款确认'),
+                  content: (
+                    <div style={{ lineHeight: '1.8' }}>
+                      <p>{t('兑换码')}: {record.name}</p>
+                      <p>{t('原始额度')}: {renderQuota(data.original_quota)}</p>
+                      <p>{t('可退额度')}: {renderQuota(data.refundable_quota)}</p>
+                      <p>{t('已使用')}: {(data.used_percentage * 100).toFixed(1)}%</p>
+                      <p>{t('兑换人ID')}: {data.user_id}</p>
+                    </div>
+                  ),
+                  onOk: async () => {
+                    try {
+                      const refundRes = await API.post(
+                        '/api/redemption/refund',
+                        { key: record.key },
+                      );
+                      if (refundRes.data.success) {
+                        showSuccess(t('退款成功'));
+                        refresh();
+                      } else {
+                        showError(refundRes.data.message);
+                      }
+                    } catch (err) {
+                      showError(err.message);
+                    }
+                  },
+                });
+              } catch (err) {
+                showError(err.message);
+              }
+            },
+          });
+        }
 
         if (record.status === REDEMPTION_STATUS.UNUSED && !isExpired(record)) {
           moreMenuItems.push({
