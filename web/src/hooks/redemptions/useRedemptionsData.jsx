@@ -55,6 +55,7 @@ export const useRedemptionsData = () => {
   // Form state
   const formInitValues = {
     searchKeyword: '',
+    searchKey: '',
   };
 
   // Get form values
@@ -62,6 +63,7 @@ export const useRedemptionsData = () => {
     const formValues = formApi ? formApi.getValues() : {};
     return {
       searchKeyword: formValues.searchKeyword || '',
+      searchKey: formValues.searchKey || '',
     };
   };
 
@@ -94,7 +96,30 @@ export const useRedemptionsData = () => {
 
   // Search redemption codes
   const searchRedemptions = async () => {
-    const { searchKeyword } = getFormValues();
+    const { searchKeyword, searchKey } = getFormValues();
+
+    // Search by key takes priority
+    if (searchKey !== '') {
+      setSearching(true);
+      try {
+        const res = await API.get(
+          `/api/redemption/key/${encodeURIComponent(searchKey)}`,
+        );
+        const { success, message, data } = res.data;
+        if (success) {
+          setActivePage(1);
+          setTokenCount(1);
+          setRedemptionFormat(data ? [data] : []);
+        } else {
+          showError(message);
+        }
+      } catch (error) {
+        showError(error.message);
+      }
+      setSearching(false);
+      return;
+    }
+
     if (searchKeyword === '') {
       await loadRedemptions(1, pageSize);
       return;
@@ -163,8 +188,8 @@ export const useRedemptionsData = () => {
 
   // Refresh data
   const refresh = async (page = activePage) => {
-    const { searchKeyword } = getFormValues();
-    if (searchKeyword === '') {
+    const { searchKeyword, searchKey } = getFormValues();
+    if (searchKeyword === '' && searchKey === '') {
       await loadRedemptions(page, pageSize);
     } else {
       await searchRedemptions();
@@ -174,8 +199,8 @@ export const useRedemptionsData = () => {
   // Handle page change
   const handlePageChange = (page) => {
     setActivePage(page);
-    const { searchKeyword } = getFormValues();
-    if (searchKeyword === '') {
+    const { searchKeyword, searchKey } = getFormValues();
+    if (searchKeyword === '' && searchKey === '') {
       loadRedemptions(page, pageSize);
     } else {
       searchRedemptions();
@@ -186,8 +211,8 @@ export const useRedemptionsData = () => {
   const handlePageSizeChange = (size) => {
     setPageSize(size);
     setActivePage(1);
-    const { searchKeyword } = getFormValues();
-    if (searchKeyword === '') {
+    const { searchKeyword, searchKey } = getFormValues();
+    if (searchKeyword === '' && searchKey === '') {
       loadRedemptions(1, size);
     } else {
       searchRedemptions();
