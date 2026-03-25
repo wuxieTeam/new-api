@@ -1,0 +1,128 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Try merge-upstream API
+        id: merge-upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          HTTP_CODE=$(gh api repos/${{ github.repository }}/merge-upstream \
+            -f branch=main \
+            --jq '.merge_type // "none"' \
+            2>&1) && {
+            echo "result=success" >> "$GITHUB_OUTPUT"
+            echo "✅ Upstream merged: $HTTP_CODE"
+          } || {
+            echo "result=conflict" >> "$GITHUB_OUTPUT"
+            echo "⚠️ merge-upstream API failed, will try git merge"
+          }
+
+      - name: Checkout repository
+        if: steps.merge-upstream.outputs.result == 'conflict'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        if: steps.merge-upstream.outputs.result == 'conflict'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream and attempt merge
+        if: steps.merge-upstream.outputs.result == 'conflict'
+        id: git-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get parent repo info
+          PARENT=$(gh api repos/${{ github.repository }} --jq '.parent.full_name')
+          if [ -z "$PARENT" ]; then
+            echo "❌ Not a fork or parent not found"
+            exit 1
+          fi
+          echo "Upstream: $PARENT"
+
+          # Fetch upstream
+          git remote add upstream "https://github.com/${PARENT}.git" 2>/dev/null || true
+          git fetch upstream main
+
+          # Create sync branch
+          DATE=$(date +%Y%m%d)
+          BRANCH="sync-upstream/${DATE}"
+          git checkout -b "$BRANCH" origin/main
+
+          # Attempt merge
+          if git merge upstream/main --no-edit; then
+            # Restore custom workflow files that might be overwritten by upstream
+            git checkout origin/main -- .github/workflows/deploy-custom.yml 2>/dev/null || true
+            git checkout origin/main -- .github/workflows/sync-upstream.yml 2>/dev/null || true
+
+            # If custom files were restored, amend the merge commit
+            if ! git diff --quiet; then
+              git add .github/workflows/
+              git commit --amend --no-edit
+            fi
+
+            echo "merge=success" >> "$GITHUB_OUTPUT"
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+            echo "date=$DATE" >> "$GITHUB_OUTPUT"
+            echo "✅ Merge successful"
+          else
+            echo "merge=conflict" >> "$GITHUB_OUTPUT"
+            echo "❌ Merge conflicts detected — manual resolution required"
+            git merge --abort
+          fi
+
+      - name: Push branch and create PR
+        if: steps.git-merge.outputs.merge == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ steps.git-merge.outputs.branch }}"
+          DATE="${{ steps.git-merge.outputs.date }}"
+          FORMATTED_DATE=$(date -d "${DATE}" +%Y-%m-%d 2>/dev/null || echo "${DATE:0:4}-${DATE:4:2}-${DATE:6:2}")
+
+          git push origin "$BRANCH"
+
+          # Check if PR already exists for this branch
+          EXISTING=$(gh api repos/${{ github.repository }}/pulls \
+            -f head="${{ github.repository_owner }}:${BRANCH}" \
+            -f state=open \
+            --jq 'length')
+
+          if [ "$EXISTING" -gt 0 ]; then
+            echo "ℹ️ PR already exists for $BRANCH"
+            exit 0
+          fi
+
+          # Create PR via REST API
+          gh api repos/${{ github.repository }}/pulls \
+            -f title="chore: sync upstream ${FORMATTED_DATE}" \
+            -f head="$BRANCH" \
+            -f base="main" \
+            -f body="Automated sync from upstream.
+
+          This PR was created by the sync-upstream workflow.
+
+          - Merge conflicts: None (auto-resolved)
+          - Custom workflows preserved: \`deploy-custom.yml\`, \`sync-upstream.yml\`"
+
+          echo "✅ PR created"
